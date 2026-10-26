@@ -68,3 +68,32 @@ func TestWithoutNote(t *testing.T) {
 		}
 	}
 }
+
+func TestLaterTurnPromptSendsUserMessageOnce(t *testing.T) {
+	question := "Why should taxpayers fund degrees that some students never use?"
+	history := []models.Message{
+		{Sender: "User", Text: "Free college widens access.", Phase: "Opening Statement"},
+		{Sender: "Bot", Text: "Access matters, but cost does too.", Phase: "Opening Statement"},
+		{Sender: "User", Text: question, Phase: "Cross Examination"},
+	}
+	p := constructPrompt(GetBotPersonality("Expert Emma"), "Should college be free?", history, "against",
+		"Answer this question: "+question, 150)
+	if n := strings.Count(p, question); n != 1 {
+		t.Errorf("the user's message should appear once (in the transcript), found %d times", n)
+	}
+	if !strings.Contains(p, "Answer this question: the user’s latest message in the transcript") {
+		t.Error("context should point to the message instead of repeating it")
+	}
+}
+
+func TestGenerateDebateTopicIsLocal(t *testing.T) {
+	prev := defaultLLM
+	defaultLLM = nil // no AI provider needed
+	t.Cleanup(func() { defaultLLM = prev })
+	for _, level := range []string{"beginner", "intermediate", "advanced", "unknown"} {
+		topic, err := GenerateDebateTopic(level)
+		if err != nil || !strings.HasSuffix(topic, "?") {
+			t.Errorf("%s: got %q, %v", level, topic, err)
+		}
+	}
+}

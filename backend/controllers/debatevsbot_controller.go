@@ -139,6 +139,11 @@ func SendDebateMessage(c *gin.Context) {
 		return
 	}
 
+	if err := validateDebateInput(req.Topic, req.Context, req.History); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
 	// Generate bot response with the additional context field.
 	botResponse := services.GenerateBotResponse(req.BotName, req.BotLevel, req.Topic, req.History, req.Stance, req.Context, 150)
 
@@ -201,6 +206,11 @@ func JudgeDebate(c *gin.Context) {
 	var req JudgeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": "Invalid request payload: " + err.Error()})
+		return
+	}
+
+	if err := validateDebateInput("", "", req.History); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 

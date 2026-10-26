@@ -5,56 +5,62 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"math/rand"
 	"strings"
 
 	"arguehub/models"
 )
 
-// GenerateDebateTopic generates a debate topic using the AI provider based on the user's skill level
-func GenerateDebateTopic(skillLevel string) (string, error) {
-	if !llmEnabled() {
-		return "", errors.New("AI provider not configured")
-	}
-
-	// Construct the prompt for generating a debate topic
-	prompt := fmt.Sprintf(
-		`Generate a concise debate topic suitable for a %s level debater. The topic must:
-- Be a clear statement that can be argued for or against.
-- Be specific enough for detailed arguments but avoid overly broad or narrow topics.
-- NOT include formal debate phrasing like "This house believes that" or similar prefixes.
-- Return only the topic statement itself.
-Examples:
-- Beginner: Should students be allowed to use smartphones in class?
-- Intermediate: Is remote work better than office-based work?
-- Advanced: Should governments prioritize economic growth over environmental protection?`,
-		skillLevel,
-	)
-
-	ctx := context.Background()
-	response, err := generateChatText(ctx, prompt)
-	if err != nil {
-		log.Printf("Failed to generate topic: %v", err)
-		return getFallbackTopic(skillLevel), nil
-	}
-	if response == "" {
-		return getFallbackTopic(skillLevel), nil
-	}
-	return strings.TrimSpace(response), nil
+// debateTopics are the Pros and Cons Challenge topics per skill level.
+// Picking one locally saves an AI call per challenge and keeps topics
+// well-formed; add topics here to widen the pool.
+var debateTopics = map[string][]string{
+	"beginner": {
+		"Should school uniforms be mandatory?",
+		"Is homework necessary for learning?",
+		"Should students be allowed to use smartphones in class?",
+		"Should junk food be banned in schools?",
+		"Is it better to read books than watch movies?",
+		"Should pets be allowed in classrooms?",
+		"Should the school day start later?",
+		"Are video games good for children?",
+		"Should physical education be compulsory every day?",
+		"Is it better to live in a city than in the countryside?",
+	},
+	"intermediate": {
+		"Is social media beneficial for society?",
+		"Should voting be mandatory?",
+		"Is remote work better than office-based work?",
+		"Should college education be free?",
+		"Should plastic bags be banned?",
+		"Is space exploration worth the cost?",
+		"Should the voting age be lowered to 16?",
+		"Should zoos be abolished?",
+		"Is nuclear energy the best way to fight climate change?",
+		"Should professional athletes be paid less?",
+	},
+	"advanced": {
+		"Is globalization beneficial for developing countries?",
+		"Should artificial intelligence be regulated?",
+		"Should governments prioritize economic growth over environmental protection?",
+		"Should a universal basic income replace existing welfare programs?",
+		"Should social media platforms be held liable for user content?",
+		"Are economic sanctions an effective foreign policy tool?",
+		"Should genetic engineering of humans be permitted?",
+		"Should central banks issue digital currencies?",
+		"Do intellectual property laws hinder innovation?",
+		"Should wealthy nations open their borders to climate refugees?",
+	},
 }
 
-// getFallbackTopic returns a predefined topic based on skill level
-func getFallbackTopic(skillLevel string) string {
-	fallbackTopics := map[string][]string{
-		"beginner":     {"Should school uniforms be mandatory?", "Is homework necessary for learning?"},
-		"intermediate": {"Is social media beneficial for society?", "Should voting be mandatory?"},
-		"advanced":     {"Is globalization beneficial for developing countries?", "Should artificial intelligence be regulated?"},
-	}
-	topics, ok := fallbackTopics[skillLevel]
+// GenerateDebateTopic returns a random topic for the user's skill level
+// ("beginner", "intermediate" or "advanced").
+func GenerateDebateTopic(skillLevel string) (string, error) {
+	topics, ok := debateTopics[strings.ToLower(strings.TrimSpace(skillLevel))]
 	if !ok || len(topics) == 0 {
-		return "Should technology be used in education?"
+		topics = debateTopics["beginner"]
 	}
-	return topics[0] // Return the first fallback topic for simplicity
+	return topics[rand.Intn(len(topics))], nil
 }
 
 // EvaluateProsCons evaluates the user's pros and cons

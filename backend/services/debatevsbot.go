@@ -196,8 +196,15 @@ Provide an opening statement that embodies your persona and stance.
 	// For subsequent turns, determine phase and adjust instructions
 	lastUserMsg := findLastUserMessage(history)
 	userText := strings.TrimSpace(lastUserMsg.Text)
+	// The transcript already holds the user's message. The frontend also
+	// repeats it in the context ("Answer this question: <message>"), so point
+	// to it instead of sending it a second time.
+	if userText != "" && strings.Contains(extraContext, userText) {
+		extraContext = strings.Replace(extraContext, userText, "the user’s latest message in the transcript", 1)
+	}
+	emptyNote := ""
 	if userText == "" {
-		userText = "It appears you didn’t say anything."
+		emptyNote = "The user’s latest message was empty.\n"
 	}
 	// Normalize phase names
 	currentPhase := lastUserMsg.Phase
@@ -228,9 +235,8 @@ Your debating style must strictly adhere to the following guidelines:
 Your stance is: %s.
 %s
 %s
-Based on the debate transcript below, continue the discussion in the %s phase by responding directly to the user’s message.
-User’s message: "%s"
-%s
+Based on the debate transcript below, continue the discussion in the %s phase by responding directly to the user’s latest message (the last "User" line in the transcript).
+%s%s
 Transcript:
 %s
 Please provide your full argument.`,
@@ -247,7 +253,7 @@ Please provide your full argument.`,
 		}(),
 		phaseInstruction,
 		currentPhase,
-		userText,
+		emptyNote,
 		limitInstruction+" "+baseInstruction,
 		FormatHistory(history),
 	)
