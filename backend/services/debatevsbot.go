@@ -159,7 +159,7 @@ Your responses must reflect this persona consistently, as if you are the charact
 
 	// Base instruction for all responses
 	baseInstruction := "Provide only your own argument without simulating an opponent’s dialogue. " +
-		"If the user’s input is unclear, off-topic, or empty, respond with a personality-appropriate clarification request, e.g., for Yoda: 'Clouded, your point is, young one. Clarify, you must.'"
+		"If the user’s input is unclear, off-topic, or empty, start your reply with " + clarifyMarker + " and then give a personality-appropriate clarification request, e.g., for Yoda: '" + clarifyMarker + " Clouded, your point is, young one. Clarify, you must.' Never use " + clarifyMarker + " otherwise."
 
 	// Handle opening statement phase
 	if len(history) == 0 || len(history) == 1 {
@@ -273,10 +273,37 @@ func GenerateBotResponse(botName, botLevel, topic string, history []models.Messa
 	if response == "" {
 		return personalityErrorResponse(botName, "Lost in translation, my thoughts are.")
 	}
-	if strings.Contains(strings.ToLower(response), "clarify") {
+	return handleClarification(botName, response)
+}
+
+// clarifyMarker is how the model signals that it is asking the user to
+// clarify, instead of us guessing from the word "clarify", which also appears
+// in real arguments (Expert Emma's catchphrase is "Allow me to clarify.").
+const clarifyMarker = "[CLARIFY]"
+
+// handleClarification returns the model's reply unchanged unless it starts
+// with clarifyMarker. Marked replies keep the model's own in-character
+// wording; the canned clarification is used only when nothing follows it.
+func handleClarification(botName, response string) string {
+	trimmed := strings.TrimSpace(response)
+	if !strings.HasPrefix(strings.ToUpper(trimmed), clarifyMarker) {
+		return response
+	}
+	rest := strings.TrimSpace(trimmed[len(clarifyMarker):])
+	rest = strings.TrimSpace(strings.TrimLeft(rest, ":-–— "))
+	if rest == "" {
 		return personalityClarificationRequest(botName)
 	}
-	return response
+	return rest
+}
+
+// withoutNote drops a trailing note written for the model, e.g.
+// "Academic conferences (her rhetorical arena)" -> "Academic conferences".
+func withoutNote(s string) string {
+	if i := strings.Index(s, " ("); i > 0 && strings.HasSuffix(s, ")") {
+		return strings.TrimSpace(s[:i])
+	}
+	return s
 }
 
 // personalityErrorResponse returns a personality-specific error message
@@ -327,7 +354,7 @@ func personalityClarificationRequest(botName string) string {
 	bot := GetBotPersonality(botName)
 	var universeTie string
 	if len(bot.UniverseTies) > 0 {
-		universeTie = bot.UniverseTies[0] // Use first universe tie for context
+		universeTie = withoutNote(bot.UniverseTies[0]) // Use first universe tie for context
 	} else {
 		universeTie = "this debate"
 	}
