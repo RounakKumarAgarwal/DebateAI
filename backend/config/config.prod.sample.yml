@@ -12,6 +12,39 @@ gemini:
     # API key for the Gemini client
     # Obtain it from the Gemini provider's credential console
 
+llm:
+  # AI providers, tried in this order. Providers without an API key are
+  # skipped, and a provider that hits its rate limit (HTTP 429) is skipped
+  # for a cool-down so the next one answers. Every provider is called through
+  # the OpenAI-compatible API. Each value can also be set with the
+  # environment variable named in the comment.
+  providers: "groq,cloudflare,mistral,openrouter,gemini" # LLM_PROVIDERS
+
+  groq: # https://console.groq.com/keys (free, no card)
+    apiKey: "<YOUR_GROQ_API_KEY>" # GROQ_API_KEY
+    chatModel: "openai/gpt-oss-20b" # GROQ_CHAT_MODEL: bot replies
+    judgeModel: "openai/gpt-oss-120b" # GROQ_JUDGE_MODEL: judging and evaluation
+
+  cloudflare: # Workers AI, 10,000 free neurons a day
+    accountId: "<YOUR_CLOUDFLARE_ACCOUNT_ID>" # CLOUDFLARE_ACCOUNT_ID
+    apiKey: "<YOUR_CLOUDFLARE_API_TOKEN>" # CLOUDFLARE_API_TOKEN (Workers AI permission)
+    chatModel: "@cf/openai/gpt-oss-20b" # CLOUDFLARE_CHAT_MODEL
+    judgeModel: "@cf/openai/gpt-oss-120b" # CLOUDFLARE_JUDGE_MODEL
+
+  mistral:
+    apiKey: "<YOUR_MISTRAL_API_KEY>" # MISTRAL_API_KEY
+    chatModel: "mistral-small-latest" # MISTRAL_CHAT_MODEL
+    judgeModel: "mistral-medium-latest" # MISTRAL_JUDGE_MODEL
+
+  openrouter:
+    apiKey: "<YOUR_OPENROUTER_API_KEY>" # OPENROUTER_API_KEY
+    chatModel: "openai/gpt-oss-20b:free" # OPENROUTER_CHAT_MODEL
+    judgeModel: "openai/gpt-oss-120b:free" # OPENROUTER_JUDGE_MODEL
+
+  gemini: # uses gemini.apiKey above
+    chatModel: "gemini-3.6-flash" # GEMINI_CHAT_MODEL
+    judgeModel: "gemini-3.6-flash" # GEMINI_JUDGE_MODEL
+
 jwt:
   secret: "<YOUR_JWT_SECRET>"
   # A secret string used to sign JWT tokens

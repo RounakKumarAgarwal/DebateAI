@@ -15,13 +15,13 @@ import (
 func InitCoachService() {
 }
 
-// GenerateWeakStatement generates a weak opening statement for a given topic and stance using Gemini
+// GenerateWeakStatement generates a weak opening statement for a given topic and stance
 func GenerateWeakStatement(topic, stance string) (models.WeakStatement, error) {
-	if geminiClient == nil {
-		return models.WeakStatement{}, errors.New("Gemini client not initialized")
+	if !llmEnabled() {
+		return models.WeakStatement{}, errors.New("AI provider not configured")
 	}
 
-	// Construct the prompt for Gemini to generate a full-fledged weak statement
+	// Construct the prompt to generate a full-fledged weak statement
 	prompt := fmt.Sprintf(
 		`Act as a debate coach and generate a weak opening statement for the topic "%s" taking the stance "%s". 
 The statement should:
@@ -41,7 +41,7 @@ Provide ONLY the JSON output without additional text or markdown formatting.`,
 	)
 
 	ctx := context.Background()
-	response, err := generateDefaultModelText(ctx, prompt)
+	response, err := generateChatJSON(ctx, prompt)
 	if err != nil {
 		return models.WeakStatement{}, fmt.Errorf("failed to generate weak statement: %v", err)
 	}
@@ -72,8 +72,8 @@ Provide ONLY the JSON output without additional text or markdown formatting.`,
 
 // EvaluateArgument evaluates the user's improved argument against the weak statement
 func EvaluateArgument(topic, stance, weakStatementText, userResponse string) (models.Evaluation, error) {
-	if geminiClient == nil {
-		return models.Evaluation{}, errors.New("Gemini client not initialized")
+	if !llmEnabled() {
+		return models.Evaluation{}, errors.New("AI provider not configured")
 	}
 
 	prompt := fmt.Sprintf(
@@ -98,7 +98,7 @@ Provide ONLY the JSON output without additional text or markdown formatting.`,
 	)
 
 	ctx := context.Background()
-	response, err := generateDefaultModelText(ctx, prompt)
+	response, err := generateJudgeJSON(ctx, prompt)
 	if err != nil {
 		return models.Evaluation{}, fmt.Errorf("failed to evaluate argument: %v", err)
 	}

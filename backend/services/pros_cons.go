@@ -11,10 +11,10 @@ import (
 	"arguehub/models"
 )
 
-// GenerateDebateTopic generates a debate topic using the Gemini API based on the user's skill level
+// GenerateDebateTopic generates a debate topic using the AI provider based on the user's skill level
 func GenerateDebateTopic(skillLevel string) (string, error) {
-	if geminiClient == nil {
-		return "", errors.New("Gemini client not initialized")
+	if !llmEnabled() {
+		return "", errors.New("AI provider not configured")
 	}
 
 	// Construct the prompt for generating a debate topic
@@ -32,7 +32,7 @@ Examples:
 	)
 
 	ctx := context.Background()
-	response, err := generateDefaultModelText(ctx, prompt)
+	response, err := generateChatText(ctx, prompt)
 	if err != nil {
 		log.Printf("Failed to generate topic: %v", err)
 		return getFallbackTopic(skillLevel), nil
@@ -59,8 +59,8 @@ func getFallbackTopic(skillLevel string) string {
 
 // EvaluateProsCons evaluates the user's pros and cons
 func EvaluateProsCons(topic string, pros, cons []string) (models.ProsConsEvaluation, error) {
-	if geminiClient == nil {
-		return models.ProsConsEvaluation{}, errors.New("Gemini client not initialized")
+	if !llmEnabled() {
+		return models.ProsConsEvaluation{}, errors.New("AI provider not configured")
 	}
 
 	if len(pros) > 5 || len(cons) > 5 {
@@ -96,7 +96,7 @@ Required Output Format (JSON):
 	)
 
 	ctx := context.Background()
-	response, err := generateDefaultModelText(ctx, prompt)
+	response, err := generateJudgeJSON(ctx, prompt)
 	if err != nil {
 		return models.ProsConsEvaluation{}, err
 	}

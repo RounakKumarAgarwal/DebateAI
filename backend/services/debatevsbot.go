@@ -12,30 +12,18 @@ import (
 	"arguehub/models"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"google.golang.org/genai"
 )
 
-// Global Gemini client instance
-var geminiClient *genai.Client
-
-// InitDebateVsBotService initializes the Gemini client using the API key from the config
+// InitDebateVsBotService configures the AI providers (see llm.go) from config.
 func InitDebateVsBotService(cfg *config.Config) {
-	if cfg.Gemini.ApiKey == "" || cfg.Gemini.ApiKey == "<YOUR_GEMINI_API_KEY>" {
-		log.Printf("⚠️  Warning: Gemini API key not configured")
+	providers := initLLM(cfg)
+	if len(providers) == 0 {
+		log.Printf("⚠️  Warning: no AI provider configured")
 		log.Printf("⚠️  Server will continue but debate bot and AI features will not work")
-		log.Printf("⚠️  To enable these features, set a valid Gemini API key in config")
+		log.Printf("⚠️  To enable them, set GROQ_API_KEY (or another provider's key, see config.prod.sample.yml)")
 		return
 	}
-
-	var err error
-	geminiClient, err = initGemini(cfg.Gemini.ApiKey)
-	if err != nil {
-		log.Printf("⚠️  Warning: Failed to initialize Gemini client: %v", err)
-		log.Printf("⚠️  Server will continue but debate bot and AI features will not work")
-		log.Printf("⚠️  To enable these features, check your Gemini API key configuration")
-		return
-	}
-	log.Println("✅ Gemini client initialized successfully")
+	log.Printf("✅ AI providers, in failover order: %s", strings.Join(providers, " → "))
 }
 
 // FormatHistory converts a slice of debate messages into a formatted transcript
@@ -265,10 +253,10 @@ Please provide your full argument.`,
 	)
 }
 
-// GenerateBotResponse generates a response from the debate bot using the Gemini client library.
+// GenerateBotResponse generates a response from the debate bot.
 // It uses the bot’s personality to handle errors and responses vividly.
 func GenerateBotResponse(botName, botLevel, topic string, history []models.Message, stance, extraContext string, maxWords int) string {
-	if geminiClient == nil {
+	if !llmEnabled() {
 		return personalityErrorResponse(botName, "My systems are offline, it seems.")
 	}
 
@@ -277,9 +265,9 @@ func GenerateBotResponse(botName, botLevel, topic string, history []models.Messa
 	prompt := constructPrompt(bot, topic, history, stance, extraContext, maxWords)
 
 	ctx := context.Background()
-	response, err := generateDefaultModelText(ctx, prompt)
+	response, err := generateChatText(ctx, prompt)
 	if err != nil {
-		log.Printf("❌ Gemini error in GenerateBotResponse: %v", err)
+		log.Printf("❌ AI error in GenerateBotResponse: %v", err)
 		return personalityErrorResponse(botName, "A glitch in my logic, there is.")
 	}
 	if response == "" {
@@ -378,7 +366,7 @@ func personalityClarificationRequest(botName string) string {
 
 // JudgeDebate evaluates the debate, factoring in the bot’s personality adherence
 func JudgeDebate(history []models.Message) string {
-	if geminiClient == nil {
+	if !llmEnabled() {
 		return "Unable to judge."
 	}
 
@@ -454,10 +442,10 @@ Provide ONLY the JSON output without any additional text.`,
 		bot.DebateStrategy, strings.Join(bot.SignatureMoves, ", "), strings.Join(bot.PhilosophicalTenets, ", "), FormatHistory(history))
 
 	ctx := context.Background()
-	text, err := generateDefaultModelText(ctx, prompt)
+	text, err := generateJudgeJSON(ctx, prompt)
 	if err != nil || text == "" {
 		if err != nil {
-			log.Printf("Gemini error: %v", err)
+			log.Printf("AI judge error: %v", err)
 		}
 		return "Unable to judge."
 	}

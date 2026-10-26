@@ -852,7 +852,7 @@ func lookupRoomTopic(ctx context.Context, roomID string) string {
 }
 
 func JudgeDebateHumanVsHuman(merged map[string]string) string {
-	if geminiClient == nil {
+	if !llmEnabled() {
 		return "Unable to judge."
 	}
 
@@ -947,16 +947,16 @@ Provide integer scores from 0 to 10 for each section, totals equal to the sum of
 
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	text, err := generateDefaultModelJSONText(ctx, prompt)
+	text, err := generateJudgeJSON(ctx, prompt)
 	if err != nil {
-		log.Printf("AI judge: Gemini call failed: %v", err)
+		log.Printf("AI judge: call failed: %v", err)
 		return "Unable to judge: " + err.Error()
 	}
 	if text == "" {
-		log.Printf("AI judge: Gemini returned an empty response")
+		log.Printf("AI judge: empty response")
 		return "Unable to judge."
 	}
-	log.Printf("AI judge: Gemini returned %d chars", len(text))
+	log.Printf("AI judge: response of %d chars", len(text))
 	return text
 }
 
@@ -1004,7 +1004,7 @@ func normalizeJudgeResult(response string) (string, error) {
 		Verdict                   verdict `json:"verdict"`
 	}
 
-	// Gemini sometimes wraps the JSON in markdown fences or prose
+	// Models sometimes wrap the JSON in markdown fences or prose
 	// (e.g. "Here is the judgment: {...}"). Extract the JSON object
 	// spanning the first "{" to the last "}" before parsing.
 	trimmed := extractJSONObject(response)

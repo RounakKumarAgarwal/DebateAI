@@ -28,6 +28,22 @@ type Config struct {
 		ApiKey string `yaml:"apiKey"`
 	} `yaml:"gemini"`
 
+	// LLM configures the AI providers. Every provider uses the
+	// OpenAI-compatible API; providers without an API key are skipped and
+	// the rest are tried in the order given by Providers.
+	LLM struct {
+		Providers  string            `yaml:"providers"` // e.g. "groq,cloudflare,mistral,openrouter,gemini"
+		Groq       LLMProviderConfig `yaml:"groq"`
+		Cloudflare struct {
+			LLMProviderConfig `yaml:",inline"`
+			AccountID         string `yaml:"accountId"`
+		} `yaml:"cloudflare"`
+		Mistral    LLMProviderConfig `yaml:"mistral"`
+		OpenRouter LLMProviderConfig `yaml:"openrouter"`
+		// Gemini uses Gemini.ApiKey; only the model names live here.
+		Gemini LLMProviderConfig `yaml:"gemini"`
+	} `yaml:"llm"`
+
 	Database struct {
 		URI string `yaml:"uri"`
 	} `yaml:"database"`
@@ -55,6 +71,14 @@ type Config struct {
 	GoogleOAuth struct {
 		ClientID string `yaml:"clientID"`
 	} `yaml:"googleOAuth"`
+}
+
+// LLMProviderConfig holds one AI provider's key and the models used for chat
+// (bot replies) and judging. Empty models fall back to built-in defaults.
+type LLMProviderConfig struct {
+	APIKey     string `yaml:"apiKey"`
+	ChatModel  string `yaml:"chatModel"`
+	JudgeModel string `yaml:"judgeModel"`
 }
 
 func setStringEnv(name string, target *string) {
@@ -100,6 +124,22 @@ func LoadConfig(path string) (*Config, error) {
 		{"COGNITO_REGION", &cfg.Cognito.Region},
 		{"OPENAI_API_KEY", &cfg.Openai.GptApiKey},
 		{"GEMINI_API_KEY", &cfg.Gemini.ApiKey},
+		{"LLM_PROVIDERS", &cfg.LLM.Providers},
+		{"GROQ_API_KEY", &cfg.LLM.Groq.APIKey},
+		{"GROQ_CHAT_MODEL", &cfg.LLM.Groq.ChatModel},
+		{"GROQ_JUDGE_MODEL", &cfg.LLM.Groq.JudgeModel},
+		{"CLOUDFLARE_ACCOUNT_ID", &cfg.LLM.Cloudflare.AccountID},
+		{"CLOUDFLARE_API_TOKEN", &cfg.LLM.Cloudflare.APIKey},
+		{"CLOUDFLARE_CHAT_MODEL", &cfg.LLM.Cloudflare.ChatModel},
+		{"CLOUDFLARE_JUDGE_MODEL", &cfg.LLM.Cloudflare.JudgeModel},
+		{"MISTRAL_API_KEY", &cfg.LLM.Mistral.APIKey},
+		{"MISTRAL_CHAT_MODEL", &cfg.LLM.Mistral.ChatModel},
+		{"MISTRAL_JUDGE_MODEL", &cfg.LLM.Mistral.JudgeModel},
+		{"OPENROUTER_API_KEY", &cfg.LLM.OpenRouter.APIKey},
+		{"OPENROUTER_CHAT_MODEL", &cfg.LLM.OpenRouter.ChatModel},
+		{"OPENROUTER_JUDGE_MODEL", &cfg.LLM.OpenRouter.JudgeModel},
+		{"GEMINI_CHAT_MODEL", &cfg.LLM.Gemini.ChatModel},
+		{"GEMINI_JUDGE_MODEL", &cfg.LLM.Gemini.JudgeModel},
 		{"DATABASE_URI", &cfg.Database.URI},
 		{"REDIS_ADDR", &cfg.Redis.Addr},
 		{"REDIS_PASSWORD", &cfg.Redis.Password},
