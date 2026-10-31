@@ -388,6 +388,8 @@ const DebateRoom: React.FC = () => {
   const [isConceding, setIsConceding] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const botTurnRef = useRef(false);
+  // Set once the judge request is sent, so a debate is judged (and scored) only once.
+  const judgeRequestedRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
@@ -636,10 +638,10 @@ const DebateRoom: React.FC = () => {
   };
 
   const handleNextTurn = () => {
-    setState((prev) => {
-      advanceTurn(prev);
-      return prev;
-    });
+    // Called from a click, so `state` is current. Advancing inside a setState
+    // updater ran the side effects twice in React StrictMode, which sent the
+    // judge request (and awarded points) twice.
+    advanceTurn(state);
   };
 
   const sendMessage = async () => {
@@ -740,6 +742,8 @@ const DebateRoom: React.FC = () => {
       console.error("Cannot judge debate without debate data.");
       return;
     }
+    if (judgeRequestedRef.current) return;
+    judgeRequestedRef.current = true;
 
     try {
       console.log("Starting judgment with messages:", messages);
